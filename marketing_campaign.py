@@ -224,13 +224,19 @@ class Analysis():
     def __init__(self, data):
         self.data = data
 
-    def grouped_bar_chart(self):
-        fig,ax = plt.subplots(figsize = (10,6),layout = 'constrained')
-        df = pd.DataFrame(self.data.groupby(['Education','Marital_Status']).TotalAcrossProducts.mean()).reset_index()
-        sns.barplot(x='Education', y='TotalAcrossProducts', hue = 'Marital_Status',data= df,ax = ax)
+    def plot_bar_plot(self,data,x,y,hue):
+        fig, ax = plt.subplots(figsize=(16, 8), layout='constrained')
+        sns.barplot(x=x, y=y, hue=hue, data=data, ax=ax)
         plt.ylabel('Mean Spends across all products')
-        plt.title('Snapshot of total expenditure by various categories')
+        plt.title('Snapshot of total expenditure by various categories by %s and %s' %(x,hue))
         plt.show()
+
+    def grouped_bar_chart(self):
+        columns = ['Country', 'Education', 'Marital_Status']
+        df = pd.DataFrame(self.data.groupby(columns).TotalAcrossProducts.mean()).reset_index()
+        self.plot_bar_plot(df,x=columns[0],y='TotalAcrossProducts',hue=columns[1])
+        self.plot_bar_plot(df,x=columns[0],y='TotalAcrossProducts',hue=columns[2])
+        self.plot_bar_plot(df,x=columns[1],y='TotalAcrossProducts',hue=columns[2])
 
     def plot_one_box_and_histogram(self,ind_var,dep_var):
         fig_size = (16, 10)
