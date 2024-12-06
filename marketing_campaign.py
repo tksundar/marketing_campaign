@@ -240,17 +240,18 @@ class Analysis():
         self.data = data
 
     def plot_bar_plot(self,x_values,y_values):
-        fig, axes = plt.subplots(nrows=len(x_values), ncols=len(y_values), figsize=(16, 20), layout='constrained')
         for i, x in enumerate(x_values):
+            fig, axes = plt.subplots(nrows=1, ncols=len(y_values), figsize=(16, 6), layout='constrained')
+            title = 'Bar charts of %s grouped by %s ' % (x, hues[i])
+            plt.suptitle(title)
             for j, y in enumerate(y_values):
                 df = pd.DataFrame(self.data.groupby([x,hues[i]])[y].mean()).reset_index()
-                bars = sns.barplot(df, x=x, y=y, hue=hues[i],ax=axes[i, j])
+                bars = sns.barplot(df, x=x, y=y, hue=hues[i],ax=axes[j])
                 bars.legend(loc='upper left', bbox_to_anchor=(1, 1))
                 xticks = bars.get_xticklabels()
                 bars.set_xticks(bars.get_xticks())
                 bars.set_xticklabels(xticks, rotation=90)
-
-        plt.show()
+            plt.show()
 
     def grouped_bar_chart(self):
         print('****************************************************************************')
