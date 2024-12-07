@@ -10,6 +10,16 @@ pd.options.mode.copy_on_write = True
 # example of a one hot encoding
 
 from Common import *
+
+
+def get_color(corr):
+    green_threshold = 0.1
+    red_threshold = -0.1
+    if corr > green_threshold: return 'green'
+    if red_threshold < corr < green_threshold: return 'blue'
+    if corr < red_threshold: return 'red'
+
+
 class Visualisations:
 
     def __init__(self, data):
@@ -153,6 +163,7 @@ class Visualisations:
         e_title = self.get_title(edn,'EEducation','Education')
         ectr = pd.DataFrame(self.data.groupby(['ECountry','Country']).TotalAcrossProducts.sum()).reset_index()
         c_title = self.get_title(ectr,'ECountry','Country')
+        colors = ["green",'red','blue']
         for i,x in enumerate(ind_vars__):
           fig, axes = plt.subplots(nrows=1, ncols=len(dep_vars), figsize=(20, 6), layout='constrained')
           if x == 'EEducation':
@@ -162,6 +173,6 @@ class Visualisations:
           for j,y in enumerate(dep_vars):
                 df = pd.DataFrame(self.data.groupby(x)[y].sum()).reset_index()
                 cor,_ = pearsonr(df[x],df[y])
-                sns.regplot(x=x, y=y,data = df, ax=axes[j]).set_title('Correlation = %.4f' %cor)
+                sns.regplot(x=x, y=y, data = df, line_kws={"color": get_color(cor)}, ax=axes[j]).set_title('Correlation = %.4f' % cor)
 
         plt.show()
