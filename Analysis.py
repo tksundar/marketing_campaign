@@ -73,6 +73,8 @@ class Analysis:
         fig_size = (20, 8)
         cmap = 'Paired'
         data = remove_outliers(self.data, dep_vars, 3)
+
+        ind_vars.append('Marital_Status')
         for _, ind_var in enumerate(ind_vars):
             fig, axes = plt.subplots(nrows=1, ncols=len(products), figsize=fig_size, layout='constrained')
             for i, dep_var in enumerate(products):
@@ -80,5 +82,4 @@ class Analysis:
                 p1 = df.pivot_table(columns=ind_var, values=dep_var, aggfunc='sum')
                 heatmap = sns.heatmap(p1,annot=True, cmap=cmap, annot_kws={'rotation': 90},ax=axes[i])
                 heatmap.set_xticklabels(heatmap.get_xticklabels(), rotation=90)
-
             plt.show()

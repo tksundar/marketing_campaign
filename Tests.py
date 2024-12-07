@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from scipy.stats import pearsonr
 
 pd.options.mode.copy_on_write = True
 from statsmodels.stats.weightstats import ztest
@@ -143,8 +144,8 @@ class Tests:
         :return:
         """
         data = self.data
-        H0 = 'There is no difference in US purchase volumes compared to other countries'
-        H1 = 'US  outperforms the rest of the countries in purchase volumes'
+        H0 = 'United States does not significantly outperform the rest of the world in total purchase volumes'
+        H1 = 'United States significantly outperform the rest of the world in total purchase volumes'
         print_test_header(H0, H1)
         alpha = 0.001
         purchases_by_country = data.loc[:, ['TotalAcrossProducts', 'Country']]
@@ -157,14 +158,15 @@ class Tests:
             title = H0
         else:
             title = H1
-
         by_country = pd.DataFrame(data.groupby('Country').TotalAcrossProducts.mean()).reset_index()
         by_country['TotalAcrossProducts'] = by_country.rename(columns={'TotalAcrossProducts': 'MeanAcrossProducts'},
                                                               inplace=True)
-        fig, a = plt.subplots(1, 1, figsize=(10, 6))
-        sns.barplot(x='Country', y='MeanAcrossProducts', hue='Country', data=by_country, ax=a)
+        fig, a = plt.subplots(1, 1, figsize=(10, 6),layout='constrained')
+        plot = sns.barplot(x='Country', y='MeanAcrossProducts', hue='Country', data=by_country, ax=a)
         plot_title = '%s\nPopulation mean = %.4f,\n US mean = %.4f,\n p value = %.4f,\nalpha %.4f' % (
             title, pop_mean, us_mean, p, alpha)
-        plt.suptitle(plot_title)
-        plt.tight_layout()
+        plot.set_title(plot_title)
+        encoded = pd.get_dummies(data,'Country')
+        corr,_ = pearsonr(encoded['Country_US'],encoded['TotalAcrossProducts'])
+        print(corr)
         plt.show()

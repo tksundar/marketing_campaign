@@ -2,8 +2,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-
+from prettytable import PrettyTable
 from scipy.stats import pearsonr
+
+import Common
 
 pd.options.mode.copy_on_write = True
 
@@ -18,6 +20,8 @@ def get_color(corr):
     if corr > green_threshold: return 'green'
     if red_threshold < corr < green_threshold: return 'blue'
     if corr < red_threshold: return 'red'
+
+
 
 
 class Visualisations:
@@ -69,8 +73,7 @@ class Visualisations:
         title = 'Top Performer product : %s\nLowest Revenue is for:  %s ' % (top_performer, bottom_performer)
         print('******************************************************************************')
         print('Visualization 1: ', title)
-        print(df)
-
+        print(get_table(df))
         sns.barplot(x='Products', y='Amount', hue='Products', data=df,ax= ax).set_title(title)
         self.color_max_min(ax, values)
         plt.xticks(rotation=45)
@@ -83,7 +86,7 @@ class Visualisations:
         df = pd.DataFrame(data.groupby('Age').Response.sum()).reset_index()
         print('*****************************************************************************')
         print('Visualization 2: ', title)
-        print(df)
+        print(get_table(df))
 
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.regplot(x='Age', y='Response', data=df,ax = ax).set_title(
@@ -99,7 +102,7 @@ class Visualisations:
         title = 'Country with max campaign response acceptance\nCountry : %s  Accepted count = %d' % (max_response_country, max_response_value)
         print('**************************************************************************')
         print('Visualization 3: ', title)
-        print(df)
+        print(get_table(df))
 
         sns.barplot(x='Country', y='Response', data=df).set_title(title)
         self.color_max_min(ax, df['Response'].tolist())
@@ -116,7 +119,7 @@ class Visualisations:
         title = 'Correlation between total children and expenditure\n%s, Pearson correlation coefficient = %.4f' % (self.get_correlation(corr), corr)
         print('******************************************************************************')
         print('Visualization 4: ', title)
-        print(dfp)
+        print(get_table(dfp))
 
         fig,axes = plt.subplots(1,1,figsize= (10,6), layout = 'constrained')
         sns.regplot(x='TotalChildren', y='MeanAcrossProducts', data=dfp
@@ -125,14 +128,10 @@ class Visualisations:
 
     def correlation_between_education_and_complaints(self):
         fig, axes = plt.subplots(1, 1, figsize=(10, 6), layout='constrained')
-        # We use the ordinal encoder because education is an ordinal category where educational qualifications
-        # have an order with 2nd cycle being the lowest and Ph.D being the highest
-        encoded = ordinal_encode(pd.DataFrame(self.data['Education']))
-        self.enc_edn= encoded
-        self.data.loc[:, 'EEducation'] = encoded
+
         df = pd.DataFrame(self.data.groupby(['EEducation','Education']).Complain.sum()).reset_index()
         corr,_ = pearsonr(df['EEducation'],df['Complain'])
-        dfs = pd.DataFrame(self.data.pivot_table(columns = ['Education'],values = ['Complain'],aggfunc= 'sum'))
+        #dfs = pd.DataFrame(self.data.pivot_table(columns = ['Education'],values = ['Complain'],aggfunc= 'sum'))
         max_row = pd.DataFrame(df[df['Complain'] == max(df['Complain'])])
         min_row = pd.DataFrame(df[df['Complain'] == min(df['Complain'])])
         qual_max = max_row.iloc[0]['Education']
@@ -143,7 +142,7 @@ class Visualisations:
         print('********************************************************************')
         print('Visualization 5:')
         print(title)
-        print(dfs)
+        print(get_table(df))
         sns.regplot(x='EEducation',y='Complain',data = df,ax=axes).set_title(title)
         plt.show()
     def get_title(self,df,column1,column2):
@@ -154,25 +153,29 @@ class Visualisations:
             tokens.append(row[column2])
             tokens.append('     ')
         return ''.join(tokens)
-    def correlation_of_spending_patterns(self):
-        ind_vars__ =  ['EEducation' if element == 'Education' else element for element in ind_vars_1]
-        ind_vars__ =  ['ECountry' if element == 'Country' else element for element in ind_vars__]
-        e_ctr = ordinal_encode(pd.DataFrame(self.data['Country']))
-        self.data.loc[:,'ECountry'] = e_ctr
-        edn = pd.DataFrame(self.data.groupby(['EEducation','Education']).TotalAcrossProducts.sum()).reset_index()
-        e_title = self.get_title(edn,'EEducation','Education')
-        ectr = pd.DataFrame(self.data.groupby(['ECountry','Country']).TotalAcrossProducts.sum()).reset_index()
-        c_title = self.get_title(ectr,'ECountry','Country')
-        colors = ["green",'red','blue']
-        for i,x in enumerate(ind_vars__):
-          fig, axes = plt.subplots(nrows=1, ncols=len(dep_vars), figsize=(20, 6), layout='constrained')
-          if x == 'EEducation':
-              plt.suptitle(e_title)
-          elif x == 'ECountry':
-              plt.suptitle(c_title)
-          for j,y in enumerate(dep_vars):
+    def plot_correlations_for(self,dep):
+        print('*************************************************************************************')
+        print('Spending patterns of various groups across products and channels')
+        ind_vars__ = ['EEducation' if element == 'Education' else element for element in ind_vars_1]
+        ind_vars__ = ['ECountry' if element == 'Country' else element for element in ind_vars__]
+
+        edn = pd.DataFrame(self.data.groupby(['EEducation', 'Education']).TotalAcrossProducts.sum()).reset_index()
+        e_title = self.get_title(edn, 'EEducation', 'Education')
+        ectr = pd.DataFrame(self.data.groupby(['ECountry', 'Country']).TotalAcrossProducts.sum()).reset_index()
+        c_title = self.get_title(ectr, 'ECountry', 'Country')
+        for i, x in enumerate(ind_vars__):
+            fig, axes = plt.subplots(nrows=1, ncols=len(dep), figsize=(20, 6), layout='constrained')
+            if x == 'EEducation':
+                plt.suptitle(e_title)
+            elif x == 'ECountry':
+                plt.suptitle(c_title)
+            for j, y in enumerate(dep):
                 df = pd.DataFrame(self.data.groupby(x)[y].sum()).reset_index()
-                cor,_ = pearsonr(df[x],df[y])
-                sns.regplot(x=x, y=y, data = df, line_kws={"color": get_color(cor)}, ax=axes[j]).set_title('Correlation = %.4f' % cor)
+                cor, _ = pearsonr(df[x], df[y])
+                sns.regplot(x=x, y=y, data=df, line_kws={"color": get_color(cor)}, ax=axes[j]).set_title(
+                    'corr = %.4f' % cor)
 
         plt.show()
+    def correlation_of_spending_patterns(self):
+        self.plot_correlations_for(dep_vars)
+        self.plot_correlations_for(products)

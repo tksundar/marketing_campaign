@@ -4,18 +4,26 @@ import warnings
 import numpy as np
 import pandas as pd
 from pandas.core.dtypes.common import is_object_dtype
+from pandas.core.interchange.dataframe_protocol import DataFrame
 from scipy.stats import normaltest
 
 pd.options.mode.copy_on_write = True
+from sklearn.preprocessing import  OrdinalEncoder,LabelEncoder
 
-# example of a one hot encoding
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from prettytable import prettytable, PrettyTable
 
+DONE = 'Done\n'
 def drop_outlier_age_records(data):
+    '''
+    Drop records with outlier age values
+    :param data:
+    :return:
+    '''
     if is_normal(data['Age']):
         outliers = detect_outliers_z(data['Age'])
     else:
         outliers = detect_outliers_iqr(data['Age'])
+    print('\tDropping records for the following age outliers\n\t',outliers)
     index_names = data[(data['Age'] >= min(outliers))].index
     data = data.drop(index_names)
     return data
@@ -31,15 +39,22 @@ def is_normal(data):
         return True
     return False
 
+def label_encode(df:DataFrame):
+    '''
 
-def one_hot_encode(values):
-    encoder = OneHotEncoder()
-    return encoder.fit_transform(values)
+    :param df: a dataframe
+    :return:
+    '''
+    label_encoder = LabelEncoder()
+    return label_encoder.fit_transform(df)
 
-
-def ordinal_encode(values):
+def ordinal_encode(df:DataFrame):
+    '''
+    :param df: Dataframe
+    :return:
+    '''
     encoder = OrdinalEncoder()
-    return encoder.fit_transform(values)
+    return encoder.fit_transform(df)
 
 
 
@@ -128,6 +143,18 @@ def get_age_category(row):
 
 
 
+def get_table(dfs):
+        table = PrettyTable()
+        columns =  dfs.columns.tolist()
+        table.field_names =columns
+        for index,row in dfs.iterrows():
+            values = []
+            for column in columns:
+              values.append(row[column])
+            table.add_row(values)
+
+        return table
+
 def clean_data(mkt_data):
     """
      Cleans the input by doing the following
@@ -142,9 +169,11 @@ def clean_data(mkt_data):
     :param mkt_data: DataFrame
     :return:  mkt_data: DataFrane
     """
+
     warnings.simplefilter(action='ignore', category=FutureWarning)
     print('data shape before cleaning : ', mkt_data.shape)
     mkt_data.drop_duplicates(keep='first', inplace=True)
+    print('stripping white spaces ...')
 
     for col in mkt_data.columns:
         if ' ' in col:
@@ -152,80 +181,91 @@ def clean_data(mkt_data):
     for col in mkt_data.columns:
         if is_object_dtype(mkt_data[col]):
             mkt_data[col] = mkt_data[col].str.strip()
+    print(DONE)
+
+    print('Fixing income column...')
 
     mkt_data['Income'] = mkt_data['Income'].str.replace('$', '').str.replace(',', '', regex=True).astype(float)
-    mkt_data['Dt_Customer'] = pd.to_datetime(mkt_data['Dt_Customer'], format="%m/%d/%y")
-    '''
-    The data contains the following marital statuses
-    ['Divorced' 'Single' 'Married' 'Together' 'Widow' 'YOLO' 'Alone' 'Absurd']
-    The first four are valid statuses (Together could mean a livin relationship)
-    The last three are not acceptable. However their frequency count is very lo at 3,2,2 
-    respectively. Replacing these values with the mode for the column
-    '''
-    marital_status_mode = pd.DataFrame(mkt_data['Marital_Status'].mode()).iloc[0]['Marital_Status']
-    mkt_data['Marital_Status'] = mkt_data.apply(lambda row: get_marital_status(row,marital_status_mode) , axis=1)
     income_by_ms_and_eduction = pd.DataFrame(mkt_data.groupby(['Marital_Status', 'Education']).Income.mean())
-    '''
-    incomes is a dictionary where key is a tuple and value is the mean for that combination like -> ('Married', 'Master'): 53286.02898550725 
-    We will use this dictionary to replace nan income cells with appropriate values. This is based on the problem statement
-    Another way is to use country and education to replace the income values
-    '''
+    # incomes is a dictionary where key is a tuple and value is the mean for that combination like -> ('Married', 'Master'): 53286.02898550725
+    # We will use this dictionary to replace nan income cells with appropriate values. This is based on the problem statement
+    # Another way is to use country and education to replace the income values
     incomes = income_by_ms_and_eduction.to_dict().get('Income')
-
-    '''
-    We fill the missing values in a row by the mean value of income for that row's marital_status and eduction level.
-    we use the incomes dictionary for lookup
-    '''
+    # We fill the missing values in a row by the mean value of income for that row's marital_status and eduction level.
+    # we use the incomes dictionary for lookup
     mkt_data.loc[:, 'Income'] = mkt_data.apply(
         lambda row: get_income(row, incomes) if np.isnan(row.loc['Income']) else row.loc['Income'], axis=1)
+    print(DONE)
 
-    '''
-    we create thee more columns to hold the total sales across product lines , across sales channels and 
-    a column for age (calculated from year of birth)
-    '''
+    print('Fixing the dateformat...')
 
-    # new_mkt_data = mkt_data[mkt_data['Year_Birth'] > 1942]
-    new_mkt_data = mkt_data.copy()
-    total_across_products = new_mkt_data.apply(
+    mkt_data['Dt_Customer'] = pd.to_datetime(mkt_data['Dt_Customer'], format="%m/%d/%y")
+    print(DONE)
+    #Fixing nonsensical marital status values with the mode of the column
+    print('Fixing marital_status column')
+
+    marital_status_mode = pd.DataFrame(mkt_data['Marital_Status'].mode()).iloc[0]['Marital_Status']
+    mkt_data['Marital_Status'] = mkt_data.apply(lambda row: get_marital_status(row,marital_status_mode) , axis=1)
+    print(DONE)
+
+
+    total_across_products = mkt_data.apply(
         lambda row: row['MntWines'] + row['MntFruits'] + row['MntMeatProducts'] + row['MntFishProducts'] + row[
             'MntGoldProds'], axis=1)
-    total_across_channels = new_mkt_data.apply(
+    total_across_channels = mkt_data.apply(
         lambda row: row['NumDealsPurchases'] + row['NumWebPurchases'] + row['NumCatalogPurchases'] + row[
             'NumStorePurchases'] + row['MntGoldProds'], axis=1)
+    # We use the ordinal encoder because education is an ordinal category where educational qualifications
+    # have an order with 2nd cycle being the lowest and Ph.D being the highest
+    print('Encoding Education')
+    encoded = ordinal_encode(pd.DataFrame(mkt_data['Education']))
+    print(DONE)
+    print('Encoding country')
+    mkt_data['ECountry'] = label_encode(mkt_data['Country'])
+    print(DONE)
+    print('Adding columns...')
+    # adding first column
+    mkt_data.loc[:, 'TotalAcrossProducts'] = total_across_products
+    print('\tAdded column TotalAcrossProducts')
+    #Adding 2nd column
+    mkt_data.loc[:, 'TotalAcrossChannels'] = total_across_channels
+    print('\tAdded column TotalAcrossChannels')
+    off_store_purchases = mkt_data.apply(lambda row: row['TotalAcrossChannels'] - row['NumStorePurchases'], axis=1)
+    #adding 3rd column
+    mkt_data.loc[:, 'OffStorePurchases'] = off_store_purchases
+    print('\tAdded column OffStorePurchases')
+    #adding 4th column
+    #mkt_data.loc[:, 'ECountry'] = e_ctr
+    print('\tAdded column ECountry')
 
-    new_mkt_data.loc[:, 'TotalAcrossProducts'] = total_across_products
-    new_mkt_data.loc[:, 'TotalAcrossChannels'] = total_across_channels
-    off_store_purchases = new_mkt_data.apply(lambda row: row['TotalAcrossChannels'] - row['NumStorePurchases'], axis=1)
-    new_mkt_data.loc[:, 'OffStorePurchases'] = off_store_purchases
+     #adding 5th column
+    mkt_data.loc[:, 'EEducation'] = encoded
+    print('\tAdded column EEducation')
     current_year = datetime.datetime.now().year
-    new_mkt_data.loc[:, 'Age'] = new_mkt_data.apply(lambda row: current_year - row['Year_Birth'], axis=1)
-    #drop outlier age records
-    new_mkt_data = drop_outlier_age_records(new_mkt_data)
-
-    age_category =new_mkt_data.apply(lambda row : get_age_category(row),axis=1)
-    new_mkt_data.loc[:,'AgeBracket'] = age_category
+    #adding 6th column
+    mkt_data.loc[:, 'Age'] = mkt_data.apply(lambda row: current_year - row['Year_Birth'], axis=1)
+    print('\tAdded column Age')
+    age_category =mkt_data.apply(lambda row : get_age_category(row),axis=1)
+    #Adding 7th Column
+    mkt_data.loc[:,'AgeBracket'] = age_category
+    print('\tAdded column AgeBracket')
+    print(DONE)
+    # drop outlier age records
+    print('Dropping outlier age records')
+    mkt_data = drop_outlier_age_records(mkt_data)
+    print(DONE)
     # check that there are no more missing values
     missing = mkt_data.isna()
     if True in missing.values:
         raise ValueError('Missing values present')
-    tasks_completed= ['Stripped all whitespace',
-                      'Replaced nan values with appropriate values',
-                      'Converted all date columns to pandas datetime dtype',
-                      'Cleaned Marital_Status column by replacing bad values with column mode value',
-                      'Cleaned the Income column by \n'
-                       '\ta)Removing $ sign from the entries and converting the dtype to float64 so that mathematical operations are possible\n'
-                       '\tb)Replacing nan entries(24 of them) with suitable mean values of income based on marital status and education level of the customer\n',
-                      'Removed outlier records for age',
-                      'Added TotalAcrossProducts, TotalAcrossChannels ,OffStorePurchases, Age and AgeBracket columns',
-                      'Outlier Age records dropped']
-    print('Cleaning and filling missing values complete.')
-    print('Cleaning performed the following tasks')
-    print('------------------------------------------------------------------')
-    for i,v in enumerate(tasks_completed):
-        print('%d. %s' %(i,v))
+    print(f'data shape after cleaning {mkt_data.shape}')
 
-    print('data shape after cleaning : ', new_mkt_data.shape)
-    return new_mkt_data
+
+    return mkt_data
+def get_channels_and_products():
+    copy = dep_vars.copy()
+    copy.extend(products)
+    return copy
 
 threshold = 3.0  # for outlier removal using z score for normal distributions
 factor = 1.5  # for outlier removal using IQR interval for skewed distributions
@@ -233,6 +273,7 @@ products = ['MntWines', 'MntFruits', 'MntMeatProducts', 'MntFishProducts', 'MntS
 prod_labels = ['Wines', 'Fruits', 'MeatProducts', 'FishProducts', 'SweetProducts', 'GoldProds']
 dep_vars = ['TotalAcrossProducts', 'TotalAcrossChannels', 'NumDealsPurchases', 'NumWebPurchases', 'NumCatalogPurchases',
             'NumStorePurchases']
+
 ind_vars = ['AgeBracket', 'Education', 'Kidhome','Country']
 hues = ['Education','Kidhome','Country','AgeBracket']
 ind_vars_1 = ['Age', 'Education', 'Kidhome','Country']

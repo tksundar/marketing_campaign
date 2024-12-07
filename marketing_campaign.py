@@ -7,8 +7,9 @@ def analyse_data(mkt_data):
     print('Starting basis data analysis for preliminary insights')
     print('*******************************************************************************')
     analysis = Analysis(mkt_data)
-    analysis.grouped_bar_chart()
-    analysis.plot_box_and_histogram()
+    #
+    # analysis.grouped_bar_chart()
+    # analysis.plot_box_and_histogram()
     analysis.plot_heatmaps()
 
 def do_hypothesis_tests(data):
@@ -35,7 +36,10 @@ def do_visualisations(data):
     visualise.correlation_of_spending_patterns()
 
 
-menu = ['Analyse Data','Do hypothesis Tests','Do Correlations','Perform All Tasks']
+# menu = ['Analyse Data','Do hypothesis Tests','Do Correlations','Perform All Tasks']
+
+field_names = ['Task','Analysis','Tests','Visualisations','All']
+options =  ['Choice',1,2,3,4]
 
 def perform_all_tasks(mkt_data):
     analyse_data(mkt_data)
@@ -46,9 +50,16 @@ if __name__ == '__main__':
     print('*******************************************************************************')
     print('Marketing Campaign Project')
     print('*******************************************************************************')
+
     mkt_data = clean_data(pd.read_csv('marketing_data.csv'))
-    for i,v in enumerate(menu):
-        print('%d %s' %(i+1, v))
+    table = PrettyTable()
+    print('\n*******************************************************************************')
+    print('\nThe following choices are available on the given marketing campaign data')
+    print('\n*******************************************************************************')
+
+    table.field_names = field_names
+    table.add_row(options)
+    print(table)
 
     choice = input('\nEnter your choice : ')
 
