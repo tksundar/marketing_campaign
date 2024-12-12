@@ -7,6 +7,7 @@ Description: This is the source code for the project fof PGC AIML: Applied Data 
 """
 import copy
 import datetime
+import random
 
 import sys
 
@@ -15,6 +16,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.pyplot import title
 from pandas.core.dtypes.common import is_object_dtype
 from prettytable import PrettyTable
 from scipy.stats import pearsonr, normaltest
@@ -23,7 +25,21 @@ from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 
 pd.options.mode.copy_on_write = True
 matplotlib.pyplot.set_loglevel(level='warning')
+
+
 #### Global read only variables
+class Text:
+    BOLD_START = '\033[1m'
+    END = '\033[0m'
+    UNDERLINE = '\033[4m'
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+
 
 threshold = 3.0  # for outlier removal using z score for normal distributions
 factor = 1.5  # for outlier removal using IQR interval for skewed distributions
@@ -40,26 +56,27 @@ lm = '25K - 45K'
 middle = '45K - 65K'
 high = ' > 65K'
 
-menu = ['Analyse Data', 'Do hypothesis Tests', 'Do Correlations', 'Perform All Tasks']
-DONE = 'Done\n'
-# field_names = ['Task', 'Analysis', 'Tests', 'Visualisations', 'Other Correlations', 'Grouped charts', 'All']
-# options = ['Choice', 1, 2, 3, 4, 5, 6]
+Key_insights = '%s%s%sKey Insights%s' % (Text.BOLD_START, Text.BLUE, Text.UNDERLINE, Text.END)
+
 field_names = ['Task ➤', 'Analysis', 'Tests', 'Visualisations', 'Other Correlations', 'Grouped charts', 'All']
 options = ['Choice ➤', 1, 2, 3, 4, 5, 6]
 
-def plot_hist(data,column,ax,title=None):
+
+def plot_hist(data, column, ax, title=None):
     plot = sns.histplot(data, x=column, kde=True, ax=ax)
     xticks = plot.get_xticklabels()
     plot.set_xticks(plot.get_xticks())
     plot.set_xticklabels(xticks, rotation=90)
     plot.set_title(title)
 
-def plot_box(data,column,ax,title=None):
-    plot = sns.boxplot(data, y=column,  ax=ax)
+
+def plot_box(data, column, ax, title=None):
+    plot = sns.boxplot(data, y=column, ax=ax)
     xticks = plot.get_xticklabels()
     plot.set_xticks(plot.get_xticks())
     plot.set_xticklabels(xticks, rotation=90)
     plot.set_title(title)
+
 
 def drop_outlier_age_records(data):
     '''
@@ -130,11 +147,21 @@ def get_marital_status(row, mode):
         return row['Marital_Status']
 
 
-def print_test_header(H0, H1):
-    print('*************************************************************************************')
-    print('H0:', H0)
-    print('H1:', H1)
-    print('*************************************************************************************')
+def print_test_header(H0, H1, test_no):
+    test_no = 'Test ' + str(test_no)
+    h0 = 'H0:' + H0
+    h1 = 'H1:' + H1
+    print('%s%s%s%s%s' % (Text.BLUE, Text.BOLD_START, Text.UNDERLINE, test_no, Text.END))
+    print('%s%s%s:' % (Text.BLUE, h0, Text.END))
+    print('%s%s%s:' % (Text.BLUE, h1, Text.END))
+
+
+def print_test_result(H):
+    H = 'Result: ' + H
+
+    print('%s-----------------------------------------------------------------------------%s' % (Text.GREEN, Text.END))
+    print('%s%s%s' % (Text.GREEN, H, Text.END))
+    print('%s-----------------------------------------------------------------------------%s' % (Text.GREEN, Text.END))
 
 
 def detect_outliers_z(data, threshold=3.0):
@@ -277,19 +304,31 @@ def plot_correlations_for(data, dep):
             sns.regplot(x=x, y=y, data=df, line_kws={"color": get_color(cor)}, ax=axes[j]).set_title(
                 'corr = %.4f' % cor)
 
-    plt.show()
+        plt.show()
 
 
 def correlation_of_spending_patterns(data):
-    print('*************************************************************************************')
-    print('SCorrelations between various variables')
+    matter = '''
+The following charts show correlation between categorical variables and numerical 
+variables(product lines and sales channels). The charts are color coded as follows:
+blue : weak or no correlation( -0.1 < correlation < 0.1)
+red  : medium/strong negative correlation (correlation < -0.1 )
+green: medium/strong positive correlation( correlation > 0.1 )
+'''
+    print(Key_insights)
+    print('%s%s%s' % (Text.BLUE, matter, Text.END))
     plot_correlations_for(data, dep_vars)
     plot_correlations_for(data, products)
 
 
 def grouped_bar_chart(data):
-    print('****************************************************************************')
-    print('Additional Grouped charts')
+    insights =  '''
+These charts reinforce the insights obtained in the analysis phase.
+These are only included for reference
+    '''
+    print(Key_insights)
+    print('%s%s%s'%(Text.BLUE,insights,Text.END))
+
     hues = ['Education', 'Kidhome', 'Country', 'AgeBracket', 'IncomeBracket']
     len1 = int(len(dep_vars) / 2)
     len2 = int(len(products) / 2)
@@ -333,7 +372,6 @@ def clean_data(mkt_data):
     for col in mkt_data.columns:
         if is_object_dtype(mkt_data[col]):
             mkt_data[col] = mkt_data[col].str.strip()
-    print(DONE)
 
     print('Fixing income column...')
 
@@ -347,30 +385,26 @@ def clean_data(mkt_data):
     # we use the incomes dictionary for lookup
     mkt_data.loc[:, 'Income'] = mkt_data.apply(
         lambda row: get_income(row, incomes) if np.isnan(row.loc['Income']) else row.loc['Income'], axis=1)
-    print(DONE)
 
     print('Fixing the dateformat...')
 
     mkt_data['Dt_Customer'] = pd.to_datetime(mkt_data['Dt_Customer'], format="%m/%d/%y")
-    print(DONE)
 
     # Fixing nonsensical marital status values with the mode of the column
     print('Fixing marital_status column')
     marital_status_mode = pd.DataFrame(mkt_data['Marital_Status'].mode()).iloc[0]['Marital_Status']
     mkt_data['Marital_Status'] = mkt_data.apply(lambda row: get_marital_status(row, marital_status_mode), axis=1)
-    print(DONE)
 
     income_brackets = mkt_data.apply(lambda row: get_income_bracket(row), axis=1)
 
     print('Encoding Education')
     e_education = ordinal_encode(pd.DataFrame(mkt_data['Education']))
-    print(DONE)
+
     print('Encoding country')
     e_ctr = label_encode(mkt_data['Country'])
-    print(DONE)
+
     print('Encoding Marital_Status')
     e_marital_status = label_encode(mkt_data['Marital_Status'])
-    print(DONE)
 
     print('Adding columns...')
 
@@ -433,12 +467,11 @@ def clean_data(mkt_data):
     # 12
     mkt_data.loc[:, 'TotalChildren'] = mkt_data.apply(lambda row: row["Kidhome"] + row['Teenhome'], axis=1)
     print('\t12.Added column TotalChildren')
-    print(DONE)
 
     # drop outlier age records
     print('Dropping outlier age records')
     mkt_data = drop_outlier_age_records(mkt_data)
-    print(DONE)
+
     # check that there are no more missing values
     missing = mkt_data.isna()
     if True in missing.values:
@@ -462,25 +495,53 @@ class Analysis:
             4. Age vs expenditure across products and sales channels and determine correlations
         :return:
         """
-        print('****************************************')
-        print('Key insights')
+        insight1 = """
+Income and expenditure has strong positive correlation ( as expected )
 
+Highest purchases across products and all but web channel was by widows
+Divorcees topped web purchases
+ 
+Education and spending has a mixed relationship with customers with Ph.D spending highest in 5 categories
+followed by customers with graduation degrees.The break up is as follows
+Ph.d : 5
+Graduation: 4
+Masters : 1
+basic : 0
+2nd Cycle : 1(Fish Products)
+
+Senior citizens topped purchases across products and channels except a couple 
+where the young (< 30 ) topped  
+        """
+
+        insight2 = '''
+There is a medium o strong positive correlation between income and spending across product lines and channels
+        '''
+
+        insight3 = '''
+All distributions and positively skewed. IQR range outlier treatment done with median as the replacement strategy
+              '''
         variables = ['IncomeBracket', 'Education', 'Marital_Status', 'AgeBracket']
         values = copy.deepcopy(dep_vars)
         values.extend(products)
+        print(Key_insights)
+        print('%s%s%s' % (Text.BLUE, insight1, Text.END))
         self.plot_bar_plot(variables, values)
+        print('%s%s' % (Text.BLUE, Text.END))
+        print(Key_insights)
+        print('%s%s%s' % (Text.BLUE, insight3, Text.END))
         self.plot_box_and_histogram()
         for_heat_map = ['EIncomeBracket', 'EEducation', 'EMarital_Status', 'Age']
         title = 'Correlation with total expenditure and sales channels'
+        print(Key_insights)
+        print('%s%s%s' % (Text.BLUE, insight2, Text.END))
         self.plot_hm(for_heat_map, dep_vars, title=title)
         title = 'Correlation with product lines'
         self.plot_hm(for_heat_map, products, title=title)
 
     def plot_bar_plot(self, x_values, y_values, hues=None):
-        print('****************************************')
-        print('High level relationship between key variables')
+
         for i, x in enumerate(x_values):
-            fig, axes = plt.subplots(nrows=1, ncols=len(y_values), figsize=(16,12), layout='constrained')
+            fig, axes = plt.subplots(nrows=1, ncols=len(y_values), figsize=(16, 5), layout='constrained')
             for j, y in enumerate(y_values):
                 if hues is not None:
                     title = ' %s grouped by %s ' % (x, hues[i])
@@ -495,32 +556,28 @@ class Analysis:
                 xticks = bars.get_xticklabels()
                 bars.set_xticks(bars.get_xticks())
                 bars.set_xticklabels(xticks, rotation=90)
-            # 0bars.set_title(title)
 
             plt.show()
 
     def plot_box_and_histogram(self):
-        print('****************************************************************************')
-        print('distribution charts before and after outlier treatment')
-
         values = copy.deepcopy(dep_vars)
         values.extend(products)
         before = 'Before outlier treatment'
         after = 'After outlier treatment'
         for column in values:
             fig, ax = plt.subplots(nrows=1, ncols=4, figsize=(12, 10), layout='constrained')
-            plot_hist(self.data,column,ax[0],before)
-            plot_box(self.data,column,ax[1],before)
+            plot_hist(self.data, column, ax[0], before)
+            plot_box(self.data, column, ax[1], before)
             data = copy.deepcopy(self.data)
             remove_outliers(data, [column])
             plot_hist(data, column, ax[2], after)
             plot_box(data, column, ax[3], after)
-            plt.suptitle('%s Distribution is positively skewed\nIQR range and median values used for replacement'%column)
+            plt.suptitle(
+                '%s Distribution is positively skewed\nIQR range and median values used for replacement' % column)
+
             plt.show()
 
     def plot_hm(self, variables, values, title=None):
-        print('****************************************')
-        print('Heatmap showing %s' % title)
         cmap = 'Paired'
         data = remove_outliers(self.data, values)
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(16, 16), layout='constrained')
@@ -536,6 +593,7 @@ class Analysis:
         heatmap.set_xticklabels(heatmap.get_xticklabels(), rotation=90)
         heatmap.set_yticklabels(heatmap.get_yticklabels(), rotation=0)
         heatmap.set_title(title)
+
         plt.show()
 
 
@@ -553,7 +611,7 @@ class Tests:
         data = self.data
         H0 = 'There is no difference in store shopping pattern between older and younger individuals'
         H1 = 'Older individuals rely on store shopping compared to younger individuals'
-        print_test_header(H0, H1)
+        print_test_header(H0, H1, 1)
         alpha = 0.001
         age_threshold = 60
         old_purchases = data[data['Age'] >= age_threshold].loc[:, ['Age', 'NumStorePurchases']]
@@ -568,7 +626,7 @@ class Tests:
         else:
             title = H1
 
-        f, a = plt.subplots(1, 1, figsize=(10, 6))
+        f, a = plt.subplots(1, 1, figsize=(10, 6), layout='constrained')
         dic = {'Old Store Purchases': [old_mean], 'Young Store Purchases': [young_mean]}
         df = pd.DataFrame(dic)
         sns.barplot(data=df, ax=a)
@@ -576,7 +634,8 @@ class Tests:
             '%s.\np value = %.10f,\n alpha = %.4f \n population mean = %.4f , \nyoung_mean = %.4f,\n old_mean = %.4f\n'
 
             % (title, p, alpha, pop_mean, young_mean, old_mean))
-        plt.tight_layout()
+
+        print_test_result(title)
         plt.show()
 
     def plot_purchase_means(self, labels, H0, H1, pop_mean, data_with_kids, data_without_kids, ax):
@@ -594,7 +653,7 @@ class Tests:
                 '%s\np value = %.5f\nalpha = %.4f, \nPopulation mean=%.4f,\n with_kids_mean = %.4f,\nwithout_kids_mean=%.4f\n'
                 % (title, p, alpha, pop_mean, with_kids_mean, without_kids_mean))
         ax.set_title(t)
-        plt.tight_layout()
+        return title
 
     def test_kids_influence_online_shopping(self):
         """
@@ -603,8 +662,7 @@ class Tests:
         data = self.data
         H0 = 'Customers with kids prefer  web purchases'
         H1 = 'Customers with kids do not prefer web  purchases'
-
-        print_test_header(H0, H1)
+        print_test_header(H0, H1, 2)
         num_web_purchases_with_kids = data[data['Kidhome'] > 0].loc[:, ['Kidhome', 'NumWebPurchases']]
         num_web_purchases_without_kids = data[data['Kidhome'] == 0].loc[:, ['Kidhome', 'NumWebPurchases']]
         pop_mean = data['NumWebPurchases'].mean()
@@ -612,7 +670,7 @@ class Tests:
         data_without_kids = num_web_purchases_without_kids['NumWebPurchases']
         labels = ['With Kids', 'without kids']
 
-        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(16, 8))
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(16, 8), layout='constrained')
         self.plot_purchase_means(labels, H0, H1, pop_mean,
                                  data_with_kids,
                                  data_without_kids,
@@ -620,21 +678,21 @@ class Tests:
         axes[0].set_ylabel('Web Purchases')
 
         H0 = 'Customers with kids prefer  off store purchases'
-        H1 = 'FTR - Customers with kids do not prefer off store purchases'
+        H1 = 'Customers with kids do not prefer off store purchases'
         # off_store_purchases = data.apply(lambda row: row['TotalAcrossChannels'] - row['NumStorePurchases'], axis=1)
         # data.loc[:, 'OffStorePurchases'] = off_store_purchases
         off_store_with_kids = data[data['Kidhome'] > 0].loc[:, ['Kidhome', 'OffStorePurchases']]
         off_store_without_kids = data[data['Kidhome'] == 0].loc[:, ['Kidhome', 'OffStorePurchases']]
         pop_mean = data['OffStorePurchases'].mean()
         labels = ['With Kids', 'without kids']
-        self.plot_purchase_means(labels, H0, H1, pop_mean,
-                                 off_store_with_kids['OffStorePurchases'],
-                                 off_store_without_kids['OffStorePurchases'],
-                                 axes[1])
+        title = self.plot_purchase_means(labels, H0, H1, pop_mean,
+                                         off_store_with_kids['OffStorePurchases'],
+                                         off_store_without_kids['OffStorePurchases'],
+                                         axes[1])
         axes[1].set_ylabel('Off Store Purchases')
         axes[1].yaxis.set_label_position("right")
         axes[1].yaxis.tick_right()
-
+        print_test_result(title)
         plt.show()
 
     def test_cannibalization_by_off_store_sales_channels(self):
@@ -645,7 +703,7 @@ class Tests:
         data = self.data
         H0 = 'Off Store channels do not cannibalize store purchases'
         H1 = 'Off store channels cannibalize store purchases'
-        print_test_header(H0, H1)
+        print_test_header(H0, H1, 3)
         alpha = 0.001
         # total_off_store_purchases = data.apply(lambda row: row['TotalAcrossChannels'] - row['NumStorePurchases'],
         #                                       axis=1)
@@ -655,7 +713,7 @@ class Tests:
             title = H0
         else:
             title = H1
-        fig, a = plt.subplots(1, 1, figsize=(10, 6))
+        fig, a = plt.subplots(1, 1, figsize=(10, 6), layout='constrained')
         store_purchases_mean = data['NumStorePurchases'].mean()
         off_store_purchases_mean = data['OffStorePurchases'].mean()
         values = [store_purchases_mean, off_store_purchases_mean]
@@ -664,7 +722,7 @@ class Tests:
         plt.suptitle(
             "%s\n store_purchases_mean = %.4f , \noff_store_purchases_mean = %.4f ,\n p value = %.10f,\nalpha = %.4f"
             % (title, store_purchases_mean, off_store_purchases_mean, p, alpha))
-        plt.tight_layout()
+        print_test_result(title)
         plt.show()
 
     def test_us_outperforms_purchases(self):
@@ -677,7 +735,7 @@ class Tests:
         data = self.data
         H0 = 'United States does not significantly outperform the rest of the world in total purchase volumes'
         H1 = 'United States significantly outperform the rest of the world in total purchase volumes'
-        print_test_header(H0, H1)
+        print_test_header(H0, H1, 4)
         alpha = 0.001
         purchases_by_country = data.loc[:, ['TotalAcrossProducts', 'Country']]
 
@@ -697,9 +755,7 @@ class Tests:
         plot_title = '%s\nPopulation mean = %.4f,\n US mean = %.4f,\n p value = %.4f,\nalpha %.4f' % (
             title, pop_mean, us_mean, p, alpha)
         plot.set_title(plot_title)
-        encoded = pd.get_dummies(data, 'Country')
-        corr, _ = pearsonr(encoded['Country_US'], encoded['TotalAcrossProducts'])
-        print(corr)
+        print_test_result(title)
         plt.show()
 
 
@@ -737,6 +793,15 @@ class Visualisations:
             else:
                 return 'strong %s correlation' % 'positive'
 
+    def print_summary(self, heading, matter):
+        border = '%s-----------------------------------------------------------------------%s' % (Text.BLUE, Text.END)
+        heading = '%s%s%s%s%s' % (Text.BOLD_START, Text.BLUE, Text.UNDERLINE, heading, Text.END)
+        matter = '%s%s%s' % (Text.BLUE, matter, Text.END)
+        print(border)
+        print(heading)
+        print(matter)
+        print(border)
+
     def top_performer(self):
 
         values = []
@@ -749,8 +814,7 @@ class Visualisations:
         bottom_performer = prod_labels[values.index(min(values))]
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
         title = 'Top Performer product : %s\nLowest Revenue is for:  %s ' % (top_performer, bottom_performer)
-        print('******************************************************************************')
-        print('Visualization 1: ', title)
+        self.print_summary('Visualization 1: ', title)
         print(get_table(df))
         sns.barplot(x='Products', y='Amount', hue='Products', data=df, ax=ax).set_title(title)
         color_max_min(ax, values)
@@ -760,16 +824,15 @@ class Visualisations:
     def correlation_customer_age_and_campaign(self):
         data = self.data
         correlation, _ = pearsonr(data['Age'], data['Response'])
-        title = self.get_correlation(correlation)
-        df = pd.DataFrame(data.groupby('Age').Response.sum()).reset_index()
-        print('*****************************************************************************')
-        print('Visualization 2: ', title)
+        title = 'There is ' + self.get_correlation(correlation) + ' between age and campaign response'
+        df = pd.DataFrame(data.groupby('AgeBracket').Response.sum()).reset_index()
+        self.print_summary('Visualization 2: ', title)
         print(get_table(df))
-
+        df = pd.DataFrame(data.groupby('Age').Response.sum()).reset_index()
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.regplot(x='Age', y='Response', data=df, ax=ax).set_title(
             'Correlation between age and campaign response.\n%s.  Pearsons Correlation Coefficient = %.4f' % (
-            title, correlation))
+                title, correlation))
         plt.show()
 
     def country_with_highest_campaign_response(self):
@@ -778,10 +841,9 @@ class Visualisations:
         max_response_country = max_response['Country'].tolist()[0]
         max_response_value = max_response['Response'].tolist()[0]
         fig, ax = plt.subplots(figsize=(10, 6))
-        title = 'Country with max campaign response acceptance\nCountry : %s  Accepted count = %d' % (
-        max_response_country, max_response_value)
-        print('**************************************************************************')
-        print('Visualization 3: ', title)
+        title = 'Country with max campaign response acceptance: %s\n  Accepted count = %d' % (
+            max_response_country, max_response_value)
+        self.print_summary('Visualization 3: ', title)
         print(get_table(df))
 
         sns.barplot(x='Country', y='Response', data=df).set_title(title)
@@ -793,10 +855,11 @@ class Visualisations:
         dfp.rename(columns={'TotalAcrossProducts': 'MeanAcrossProducts'}, inplace=True)
         corr, _ = pearsonr(dfp['TotalChildren'], dfp['MeanAcrossProducts'])
 
-        title = 'Correlation between total children and expenditure\n%s, Pearson correlation coefficient = %.4f' % (
-        self.get_correlation(corr), corr)
-        print('******************************************************************************')
-        print('Visualization 4: ', title)
+        title = 'There is ' + self.get_correlation(corr) + ' between total kids and expenditure' + (
+            '\nPearson correlation '
+            'coefficient = %.4f') % (corr)
+
+        self.print_summary('Visualization 4: ', title)
         print(get_table(dfp))
 
         fig, axes = plt.subplots(1, 1, figsize=(10, 6), layout='constrained')
@@ -815,30 +878,25 @@ class Visualisations:
         qual_max = max_row.iloc[0]['Education']
         qual_min = min_row.iloc[0]['Education']
         qual_string = 'Customers with %s degree complained the most and those with %s degree complained the least ' % (
-        qual_max, qual_min)
+            qual_max, qual_min)
         corr_string = self.get_correlation(corr)
         title = '%s\nThere is %s between education and complaints\nPearson Correlation Coefficient = %.4f' % (
-        qual_string, corr_string, corr)
-        print('********************************************************************')
-        print('Visualization 5:')
-        print(title)
+            qual_string, corr_string, corr)
+        self.print_summary('Visualization 5:', title)
         print(get_table(df))
         sns.regplot(x='EEducation', y='Complain', data=df, ax=axes).set_title(title)
         plt.show()
 
 
 def analyse_data(mkt_data):
-    print('*******************************************************************************')
-    print('Starting basis data analysis for preliminary insights')
-    print('*******************************************************************************')
+    print('%sStarting basis data analysis for preliminary insights%s' % (Text.BLUE, Text.END))
+
     analysis = Analysis(mkt_data)
     analysis.key_insights()
 
 
 def do_hypothesis_tests(data):
-    print('*******************************************************************************')
-    print('Starting hypothesis testing')
-    print('*******************************************************************************')
+    print('%sStarting hypothesis testing%s' % (Text.BLUE, Text.END))
     tests = Tests(data)
     tests.test_older_individuals_rely_on_store_shopping()
     tests.test_kids_influence_online_shopping()
@@ -847,9 +905,7 @@ def do_hypothesis_tests(data):
 
 
 def do_visualisations(data):
-    print('*******************************************************************************')
-    print('Starting Visualisations for correlations')
-    print('*******************************************************************************')
+    print('%sStarting Visualisations for correlations%s' % (Text.BLUE, Text.END))
     visualise = Visualisations(data)
     visualise.top_performer()
     visualise.correlation_customer_age_and_campaign()
@@ -873,16 +929,19 @@ def plot_correlations(mkt_data):
 def plot_grouped_charts(mkt_data):
     grouped_bar_chart(mkt_data)
 
+
 class Main:
-    print('*******************************************************************************')
-    print('Marketing Campaign Project')
-    print('*******************************************************************************')
+    print(
+        '%s--------------------------------------------------------------------------------%s' % (Text.BLUE, Text.END))
+    print('%s%sMarketing Campaign Project%s                                                    ' % (
+    Text.BOLD_START, Text.BLUE, Text.END))
+    print(
+        '%s--------------------------------------------------------------------------------%s' % (Text.BLUE, Text.END))
 
     mkt_data = clean_data(pd.read_csv('marketing_data.csv'))
     table = PrettyTable()
-    print('\n*******************************************************************************')
-    print('\nThe following choices are available on the given marketing campaign data')
-    print('\n*******************************************************************************')
+
+    print('\n%sThe following choices are available on the given marketing campaign data%s\n' % (Text.BLUE, Text.END))
 
     table.field_names = field_names
     table.add_row(options)
@@ -903,8 +962,7 @@ class Main:
     elif choice == '6':
         perform_all_tasks(mkt_data)
     else:
-        raise ValueError('The input %c is not recognised' %choice)
-
+        print('%s%sWarning! The input %c is not recognised%s' % (Text.BOLD_START, Text.RED, choice, Text.END))
 
 
 if __name__ == '__main__':
