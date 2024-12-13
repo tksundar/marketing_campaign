@@ -3,7 +3,7 @@ Filename: marketing_campaign.ipynb
 Author: Sundar Krishnamachari
 Date: 2024-12-14
 Version: 1.0
-Description: This is the source code for the project fof PGC AIML: Applied Data Science with Python course
+url:https://github.com/tksundar/marketing_campaign
 """
 import copy
 import datetime
@@ -16,7 +16,6 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.pyplot import title
 from pandas.core.dtypes.common import is_object_dtype
 from prettytable import PrettyTable
 from scipy.stats import pearsonr, normaltest
@@ -56,10 +55,10 @@ lm = '25K - 45K'
 middle = '45K - 65K'
 high = ' > 65K'
 
-Key_insights = '%s%s%sKey Insights%s' % (Text.BOLD_START, Text.BLUE, Text.UNDERLINE, Text.END)
+Key_insights = '%s%s%sKey Insights%s' % (Text.BOLD_START, Text.GREEN, Text.UNDERLINE, Text.END)
 
 field_names = ['Task ➤', 'Analysis', 'Tests', 'Visualisations', 'Other Correlations', 'Grouped charts', 'All']
-options = ['Choice ➤', 1, 2, 3, 4, 5, 6]
+options = ['Choice ➤', '1', '2', '3', '4', '5', '6']
 
 
 def plot_hist(data, column, ax, title=None):
@@ -151,9 +150,9 @@ def print_test_header(H0, H1, test_no):
     test_no = 'Test ' + str(test_no)
     h0 = 'H0:' + H0
     h1 = 'H1:' + H1
-    print('%s%s%s%s%s' % (Text.BLUE, Text.BOLD_START, Text.UNDERLINE, test_no, Text.END))
-    print('%s%s%s:' % (Text.BLUE, h0, Text.END))
-    print('%s%s%s:' % (Text.BLUE, h1, Text.END))
+    print('%s%s%s%s%s' % (Text.GREEN, Text.BOLD_START, Text.UNDERLINE, test_no, Text.END))
+    print('%s%s%s:' % (Text.GREEN, h0, Text.END))
+    print('%s%s%s:' % (Text.GREEN, h1, Text.END))
 
 
 def print_test_result(H):
@@ -303,7 +302,8 @@ def plot_correlations_for(data, dep):
             cor, _ = pearsonr(df[x], df[y])
             sns.regplot(x=x, y=y, data=df, line_kws={"color": get_color(cor)}, ax=axes[j]).set_title(
                 'corr = %.4f' % cor)
-
+        name = 'corr-'+str(random.randint(1,10))+'.png'
+        
         plt.show()
 
 
@@ -316,7 +316,7 @@ red  : medium/strong negative correlation (correlation < -0.1 )
 green: medium/strong positive correlation( correlation > 0.1 )
 '''
     print(Key_insights)
-    print('%s%s%s' % (Text.BLUE, matter, Text.END))
+    print('%s%s%s' % (Text.GREEN, matter, Text.END))
     plot_correlations_for(data, dep_vars)
     plot_correlations_for(data, products)
 
@@ -327,7 +327,7 @@ These charts reinforce the insights obtained in the analysis phase.
 These are only included for reference
     '''
     print(Key_insights)
-    print('%s%s%s'%(Text.BLUE,insights,Text.END))
+    print('%s%s%s'%(Text.GREEN,insights,Text.END))
 
     hues = ['Education', 'Kidhome', 'Country', 'AgeBracket', 'IncomeBracket']
     len1 = int(len(dep_vars) / 2)
@@ -524,16 +524,16 @@ All distributions and positively skewed. IQR range outlier treatment done with m
         values = copy.deepcopy(dep_vars)
         values.extend(products)
         print(Key_insights)
-        print('%s%s%s' % (Text.BLUE, insight1, Text.END))
+        print('%s%s%s' % (Text.GREEN, insight1, Text.END))
         self.plot_bar_plot(variables, values)
-        print('%s%s' % (Text.BLUE, Text.END))
+        print('%s%s' % (Text.GREEN, Text.END))
         print(Key_insights)
-        print('%s%s%s' % (Text.BLUE, insight3, Text.END))
+        print('%s%s%s' % (Text.GREEN, insight3, Text.END))
         self.plot_box_and_histogram()
         for_heat_map = ['EIncomeBracket', 'EEducation', 'EMarital_Status', 'Age']
         title = 'Correlation with total expenditure and sales channels'
         print(Key_insights)
-        print('%s%s%s' % (Text.BLUE, insight2, Text.END))
+        print('%s%s%s' % (Text.GREEN, insight2, Text.END))
         self.plot_hm(for_heat_map, dep_vars, title=title)
         title = 'Correlation with product lines'
         self.plot_hm(for_heat_map, products, title=title)
@@ -556,7 +556,9 @@ All distributions and positively skewed. IQR range outlier treatment done with m
                 xticks = bars.get_xticklabels()
                 bars.set_xticks(bars.get_xticks())
                 bars.set_xticklabels(xticks, rotation=90)
-
+            i = str(random.randint(1,100))
+            name = 'bar-'+i+'.png'
+            
             plt.show()
 
     def plot_box_and_histogram(self):
@@ -574,7 +576,9 @@ All distributions and positively skewed. IQR range outlier treatment done with m
             plot_box(data, column, ax[3], after)
             plt.suptitle(
                 '%s Distribution is positively skewed\nIQR range and median values used for replacement' % column)
-
+            i = str(random.randint(1, 100))
+            name = 'box-' + i + '.png'
+            
             plt.show()
 
     def plot_hm(self, variables, values, title=None):
@@ -593,7 +597,9 @@ All distributions and positively skewed. IQR range outlier treatment done with m
         heatmap.set_xticklabels(heatmap.get_xticklabels(), rotation=90)
         heatmap.set_yticklabels(heatmap.get_yticklabels(), rotation=0)
         heatmap.set_title(title)
-
+        i = str(random.randint(1, 100))
+        name = 'hm-' + i + '.png'
+        
         plt.show()
 
 
@@ -636,6 +642,9 @@ class Tests:
             % (title, p, alpha, pop_mean, young_mean, old_mean))
 
         print_test_result(title)
+        i = str(random.randint(1, 100))
+        name = 'test-1.png'
+        
         plt.show()
 
     def plot_purchase_means(self, labels, H0, H1, pop_mean, data_with_kids, data_without_kids, ax):
@@ -693,6 +702,9 @@ class Tests:
         axes[1].yaxis.set_label_position("right")
         axes[1].yaxis.tick_right()
         print_test_result(title)
+
+        name = 'test-1.png'
+        
         plt.show()
 
     def test_cannibalization_by_off_store_sales_channels(self):
@@ -723,6 +735,8 @@ class Tests:
             "%s\n store_purchases_mean = %.4f , \noff_store_purchases_mean = %.4f ,\n p value = %.10f,\nalpha = %.4f"
             % (title, store_purchases_mean, off_store_purchases_mean, p, alpha))
         print_test_result(title)
+        name = 'test-3.png'
+        
         plt.show()
 
     def test_us_outperforms_purchases(self):
@@ -756,6 +770,8 @@ class Tests:
             title, pop_mean, us_mean, p, alpha)
         plot.set_title(plot_title)
         print_test_result(title)
+        name = 'test-4.png'
+        
         plt.show()
 
 
@@ -794,9 +810,9 @@ class Visualisations:
                 return 'strong %s correlation' % 'positive'
 
     def print_summary(self, heading, matter):
-        border = '%s-----------------------------------------------------------------------%s' % (Text.BLUE, Text.END)
-        heading = '%s%s%s%s%s' % (Text.BOLD_START, Text.BLUE, Text.UNDERLINE, heading, Text.END)
-        matter = '%s%s%s' % (Text.BLUE, matter, Text.END)
+        border = '%s-----------------------------------------------------------------------%s' % (Text.GREEN, Text.END)
+        heading = '%s%s%s%s%s' % (Text.BOLD_START, Text.GREEN, Text.UNDERLINE, heading, Text.END)
+        matter = '%s%s%s' % (Text.GREEN, matter, Text.END)
         print(border)
         print(heading)
         print(matter)
@@ -889,14 +905,14 @@ class Visualisations:
 
 
 def analyse_data(mkt_data):
-    print('%sStarting basis data analysis for preliminary insights%s' % (Text.BLUE, Text.END))
+    print('%sStarting basis data analysis for preliminary insights%s' % (Text.GREEN, Text.END))
 
     analysis = Analysis(mkt_data)
     analysis.key_insights()
 
 
 def do_hypothesis_tests(data):
-    print('%sStarting hypothesis testing%s' % (Text.BLUE, Text.END))
+    print('%sStarting hypothesis testing%s' % (Text.GREEN, Text.END))
     tests = Tests(data)
     tests.test_older_individuals_rely_on_store_shopping()
     tests.test_kids_influence_online_shopping()
@@ -905,7 +921,7 @@ def do_hypothesis_tests(data):
 
 
 def do_visualisations(data):
-    print('%sStarting Visualisations for correlations%s' % (Text.BLUE, Text.END))
+    print('%sStarting Visualisations for correlations%s' % (Text.GREEN, Text.END))
     visualise = Visualisations(data)
     visualise.top_performer()
     visualise.correlation_customer_age_and_campaign()
@@ -932,16 +948,16 @@ def plot_grouped_charts(mkt_data):
 
 class Main:
     print(
-        '%s--------------------------------------------------------------------------------%s' % (Text.BLUE, Text.END))
+        '%s--------------------------------------------------------------------------------%s' % (Text.GREEN, Text.END))
     print('%s%sMarketing Campaign Project%s                                                    ' % (
-    Text.BOLD_START, Text.BLUE, Text.END))
+    Text.BOLD_START, Text.GREEN, Text.END))
     print(
-        '%s--------------------------------------------------------------------------------%s' % (Text.BLUE, Text.END))
+        '%s--------------------------------------------------------------------------------%s' % (Text.GREEN, Text.END))
 
-    mkt_data = clean_data(pd.read_csv('marketing_data.csv'))
+
     table = PrettyTable()
 
-    print('\n%sThe following choices are available on the given marketing campaign data%s\n' % (Text.BLUE, Text.END))
+    print('\n%sThe following choices are available on the given marketing campaign data%s\n' % (Text.GREEN, Text.END))
 
     table.field_names = field_names
     table.add_row(options)
@@ -949,20 +965,24 @@ class Main:
 
     choice = input('\nEnter your choice : ')
 
-    if choice == '1':
-        analyse_data(mkt_data)
-    elif choice == '2':
-        do_hypothesis_tests(mkt_data)
-    elif choice == '3':
-        do_visualisations(mkt_data)
-    elif choice == '4':
-        plot_correlations(mkt_data)
-    elif choice == '5':
-        plot_grouped_charts(mkt_data)
-    elif choice == '6':
-        perform_all_tasks(mkt_data)
-    else:
+    if choice not in options:
         print('%s%sWarning! The input %c is not recognised%s' % (Text.BOLD_START, Text.RED, choice, Text.END))
+    else:
+        mkt_data = clean_data(pd.read_csv('marketing_data.csv'))
+        if choice == '1':
+            analyse_data(mkt_data)
+        elif choice == '2':
+            do_hypothesis_tests(mkt_data)
+        elif choice == '3':
+            do_visualisations(mkt_data)
+        elif choice == '4':
+            plot_correlations(mkt_data)
+        elif choice == '5':
+            plot_grouped_charts(mkt_data)
+        elif choice == '6':
+            perform_all_tasks(mkt_data)
+
+
 
 
 if __name__ == '__main__':
